@@ -1,9 +1,10 @@
 # quant_ranking_kr
 
 > **결론 (2026-08)**: 랭킹 objective(LightGBM lambdarank)가 이진분류(XGBoost)보다
-> 낫다는 근거는 2024~2025 특정 테마주(전력기기/방산/조선) 쏠림에서 나온 착시로 확인됨.
-> 국면/종목 집중도 검증 후에는 일반화 가능한 우위로 보기 어려움. 상세 내용은
-> [`docs/PROJECT_SUMMARY.md`](docs/PROJECT_SUMMARY.md) 참고.
+> 낫다는 근거는 2024~2025 조선/방산/전력기기 **섹터 단위** 모멘텀 쏠림에서 나온
+> 착시로 최종 확인됨 (종목을 제외해도 같은 섹터의 다른 종목이 대체하는 패턴 확인).
+> 일반화 가능한 우위로 보기 어려움. 다음은 섹터 노출을 명시적 feature로 다루는 실험.
+> 상세 내용은 [`docs/PROJECT_SUMMARY.md`](docs/PROJECT_SUMMARY.md) 참고.
 
 `quant_xgboost` / `quant_lightgbm`은 전부 "개별 종목이 오를지 내릴지"를 독립적으로
 맞추는 이진분류 문제였음. 이 레포는 문제 설정 자체를 바꿔서, "오늘 여러 종목 중
