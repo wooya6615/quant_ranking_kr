@@ -81,8 +81,8 @@ def build_pooled_dataset_kospi200(
 
 
 if __name__ == "__main__":
-    # 1단계: 먼저 50종목으로 빠르게 검증
-    pooled = build_pooled_dataset_kospi200(n_tickers=50)
+    # 50종목 파이프라인 검증 완료 -> 전체 KOSPI200으로 확장
+    pooled = build_pooled_dataset_kospi200(n_tickers=None)
 
     print(f"\n전체 풀링 데이터: {pooled.shape[0]}행, {pooled['ticker'].nunique()}종목")
     print(f"날짜 범위: {pooled.index.min().date()} ~ {pooled.index.max().date()}")

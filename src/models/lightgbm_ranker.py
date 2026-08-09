@@ -30,8 +30,8 @@ SEEDS = [42, 1, 7, 123, 2024]
 HORIZON = 10  # feature_engineering_pooled_kr.py 생성 시 쓴 horizon과 반드시 동일하게 맞출 것
 ROUND_TRIP_COST = 0.002  # quant_xgboost와 동일 (매수+매도 왕복 0.2%)
 
-# 매일 몇 종목을 "픽"으로 볼지. 50종목 풀이면 5(=상위 10%), 200종목이면 10~20 정도로 늘릴 것.
-TOP_K = 5
+# 매일 몇 종목을 "픽"으로 볼지. 50종목 풀이면 5(=상위 10%), 200종목 풀이면 10(=상위 5%) 정도가 적당.
+TOP_K = 10
 
 
 N_RELEVANCE_GRADES = 5  # LightGBM lambdarank는 label을 0~30(31단계)까지만 허용 -- 5면 200종목까지도 안전
@@ -57,12 +57,14 @@ def add_relevance_label(df: pd.DataFrame, n_grades: int = N_RELEVANCE_GRADES) ->
 # ------------------------------------------------------------------
 # 2. fold 하나 학습 + 평가
 # ------------------------------------------------------------------
-def run_fold(train_df: pd.DataFrame, test_df: pd.DataFrame, random_state: int, top_k: int = TOP_K):
+def run_fold(train_df: pd.DataFrame, test_df: pd.DataFrame, random_state: int,
+             top_k: int = TOP_K, feature_cols: list = None):
+    feature_cols = feature_cols if feature_cols is not None else FEATURE_COLS_BASE
     train_df = train_df.sort_index()
     test_df = test_df.sort_index()
 
-    X_train = train_df[FEATURE_COLS_BASE + ["ticker"]]
-    X_test = test_df[FEATURE_COLS_BASE + ["ticker"]]
+    X_train = train_df[feature_cols + ["ticker"]]
+    X_test = test_df[feature_cols + ["ticker"]]
 
     train_group = train_df.groupby(train_df.index).size().values
 
@@ -141,7 +143,7 @@ def run_fold(train_df: pd.DataFrame, test_df: pd.DataFrame, random_state: int, t
 #    (국면 집중도 분석 등 날짜 단위 상세 데이터가 필요한 곳에서 재사용)
 # ------------------------------------------------------------------
 def run_walk_forward_single_seed(df: pd.DataFrame, seed: int, train_days=300, test_days=60,
-                                  step_days=60, embargo_days=HORIZON, top_k=TOP_K):
+                                  step_days=60, embargo_days=HORIZON, top_k=TOP_K, feature_cols: list = None):
     df = add_relevance_label(df)
     splits = walk_forward_splits_by_date(df, train_days, test_days, step_days, embargo_days)
     if not splits:
@@ -152,7 +154,7 @@ def run_walk_forward_single_seed(df: pd.DataFrame, seed: int, train_days=300, te
     for train_dates, test_dates in splits:
         train_df = df[df.index.isin(train_dates)]
         test_df = df[df.index.isin(test_dates)]
-        fold_ndcg, daily_df = run_fold(train_df, test_df, random_state=seed, top_k=top_k)
+        fold_ndcg, daily_df = run_fold(train_df, test_df, random_state=seed, top_k=top_k, feature_cols=feature_cols)
         fold_ndcgs.append(fold_ndcg)
         all_daily.append(daily_df)
 
@@ -165,7 +167,7 @@ def run_walk_forward_single_seed(df: pd.DataFrame, seed: int, train_days=300, te
 # 4. 전체 walk-forward 실행 (멀티 시드) -- 위 함수를 시드별로 반복 호출
 # ------------------------------------------------------------------
 def run_ranking_experiment(df: pd.DataFrame, train_days=300, test_days=60, step_days=60,
-                            embargo_days=HORIZON, top_k=TOP_K):
+                            embargo_days=HORIZON, top_k=TOP_K, feature_cols: list = None):
     n_tickers = df["ticker"].nunique()
     print(f"종목풀 {n_tickers}개, top_k={top_k}, seed {len(SEEDS)}개로 실행합니다.\n")
 
@@ -173,7 +175,7 @@ def run_ranking_experiment(df: pd.DataFrame, train_days=300, test_days=60, step_
     for seed in SEEDS:
         daily_all, mean_ndcg = run_walk_forward_single_seed(
             df, seed, train_days=train_days, test_days=test_days,
-            step_days=step_days, embargo_days=embargo_days, top_k=top_k,
+            step_days=step_days, embargo_days=embargo_days, top_k=top_k, feature_cols=feature_cols,
         )
 
         summary = {

@@ -26,9 +26,17 @@ KOSPI200_INDEX_CODE = "1028"  # pykrx 지수 코드: 코스피 200
 
 def get_kospi200_tickers(date: str = None) -> list[str]:
     """
-    date: YYYYMMDD 형식. None이면 pykrx가 내부적으로 최근 영업일을 자동 사용.
-    반환: 6자리 종목코드 리스트 (예: ["005930", "000660", ...])
+    date: YYYYMMDD 형식. None이면 최근 영업일을 직접 계산해서 사용.
+
+    [주의] date=None을 그대로 get_index_portfolio_deposit_file()에 넘기면
+    (파라미터를 아예 생략하는 것과 달리) pykrx가 "최근 영업일" fallback을
+    제대로 타지 않고, 지수 리밸런싱 이력이 누적된 것으로 보이는 훨씬 많은
+    종목 수를 반환하는 문제가 있었음 (KOSPI200은 200개여야 하는데 343개가
+    반환됨 -- 11년치 편입/편출 이력이 다 합쳐진 것으로 추정). 그래서 항상
+    실제 날짜 문자열을 명시적으로 계산해서 넘기도록 함.
     """
+    if date is None:
+        date = stock.get_nearest_business_day_in_a_week()
     tickers = stock.get_index_portfolio_deposit_file(KOSPI200_INDEX_CODE, date)
-    print(f"KOSPI200 구성종목 {len(tickers)}개 조회 완료")
+    print(f"KOSPI200 구성종목 {len(tickers)}개 조회 완료 (기준일: {date})")
     return tickers

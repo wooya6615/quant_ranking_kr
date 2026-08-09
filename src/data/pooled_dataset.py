@@ -20,7 +20,12 @@ DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 # ------------------------------------------------------------------
 def load_pooled_dataset(filename: str = "pooled_features_kospi200.csv") -> pd.DataFrame:
     path = DATA_DIR / filename
-    df = pd.read_csv(path, index_col=0, parse_dates=True)
+    # [주의] dtype 지정 없이 read_csv를 하면, pandas가 파일을 청크 단위로 읽으면서
+    # ticker 컬럼을 청크마다 다르게 추론하는 경우가 있음 (일부는 int로, 일부는 str로) --
+    # 그러면 같은 종목이 5930(int)과 "005930"(str) 두 값으로 쪼개져서 종목 수가
+    # 실제보다 부풀려지는 버그가 생김 (200종목이 343종목으로 보이는 식).
+    # dtype={"ticker": str}로 처음부터 고정해서 이 문제를 원천 차단.
+    df = pd.read_csv(path, index_col=0, parse_dates=True, dtype={"ticker": str})
 
     required = FEATURE_COLS_BASE + ["ticker", "future_return", "label"]
     missing = [c for c in required if c not in df.columns]

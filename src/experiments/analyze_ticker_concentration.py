@@ -32,13 +32,15 @@ from src.models.lightgbm_ranker import add_relevance_label, HORIZON, TOP_K, ROUN
 SEED = 42  # analyze_concentration.py / analyze_regime_correlation.py와 동일 대표 seed
 
 
-def run_fold_with_tickers(train_df: pd.DataFrame, test_df: pd.DataFrame, random_state: int, top_k: int):
+def run_fold_with_tickers(train_df: pd.DataFrame, test_df: pd.DataFrame, random_state: int,
+                           top_k: int, feature_cols: list = None):
     """run_fold과 거의 동일하지만, 랭킹 모델만 학습하고 픽된 종목(ticker)까지 기록해서 반환."""
+    feature_cols = feature_cols if feature_cols is not None else FEATURE_COLS_BASE
     train_df = train_df.sort_index()
     test_df = test_df.sort_index()
 
-    X_train = train_df[FEATURE_COLS_BASE + ["ticker"]]
-    X_test = test_df[FEATURE_COLS_BASE + ["ticker"]]
+    X_train = train_df[feature_cols + ["ticker"]]
+    X_test = test_df[feature_cols + ["ticker"]]
     train_group = train_df.groupby(train_df.index).size().values
 
     ranker = lgb.LGBMRanker(
@@ -71,7 +73,8 @@ def run_fold_with_tickers(train_df: pd.DataFrame, test_df: pd.DataFrame, random_
 
 
 def run_walk_forward_ticker_level(df: pd.DataFrame, seed: int, top_k: int = TOP_K,
-                                   train_days=300, test_days=60, step_days=60, embargo_days=HORIZON):
+                                   train_days=300, test_days=60, step_days=60, embargo_days=HORIZON,
+                                   feature_cols: list = None):
     df = add_relevance_label(df)
     splits = walk_forward_splits_by_date(df, train_days, test_days, step_days, embargo_days)
 
@@ -79,7 +82,7 @@ def run_walk_forward_ticker_level(df: pd.DataFrame, seed: int, top_k: int = TOP_
     for train_dates, test_dates in splits:
         train_df = df[df.index.isin(train_dates)]
         test_df = df[df.index.isin(test_dates)]
-        picks_df = run_fold_with_tickers(train_df, test_df, random_state=seed, top_k=top_k)
+        picks_df = run_fold_with_tickers(train_df, test_df, random_state=seed, top_k=top_k, feature_cols=feature_cols)
         all_picks.append(picks_df)
 
     return pd.concat(all_picks, ignore_index=True)
